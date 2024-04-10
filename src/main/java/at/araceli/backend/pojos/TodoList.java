@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Project: araceli-backend
- * Created by: Nico Bulut
+ * Created by: Nico Bulut, Michael Hütter
  * Created at: 10.04.24
  */
 
@@ -18,16 +18,14 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class Calendar {
+public class TodoList {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String calendarId;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "todo_list_seq")
+    @SequenceGenerator(name = "todo_list_seq", allocationSize = 1)
+    private Long todoListId;
     private String title;
 
-    @OneToMany(mappedBy = "calendar")
-    private List<Event> events;
-
-    @OneToMany(mappedBy = "calendar")
-    private List<SharedCalendar> sharedCalendars = new ArrayList<>();
+    @OneToMany(mappedBy = "todoList")
+    private List<Item> items = new ArrayList<>();
 }

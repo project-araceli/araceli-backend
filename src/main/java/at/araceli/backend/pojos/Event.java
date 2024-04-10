@@ -1,10 +1,11 @@
 package at.araceli.backend.pojos;
 
-import at.araceli.backend.pojos.enums.Permission;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 /**
  * Project: araceli-backend
@@ -16,22 +17,23 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class SharedCalendar {
+public class Event {
 
-    @EmbeddedId
-    private SharedCalendarId sharedCalendarId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String eventId;
+
+    private String name;
+    private String description;
+    private String location;
+    private LocalDateTime startDate;
+    private Integer durationInMinutes;
 
     @ManyToOne
-    @MapsId("userId")
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @ManyToOne
-    @MapsId("calendarId")
     @JoinColumn(name = "calendar_id")
     private Calendar calendar;
 
-    @Enumerated(EnumType.ORDINAL)
-    private Permission permission;
-
+    @ManyToOne
+    @JoinColumn(name = "creator_id")
+    private User creator;
 }

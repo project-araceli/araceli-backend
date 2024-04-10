@@ -1,24 +1,24 @@
 package at.araceli.backend.pojos;
 
-import jakarta.persistence.Entity;
+import jakarta.persistence.Embeddable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
 
 /**
  * Project: araceli-backend
  * Created by: Nico Bulut, Michael Hütter
- * Created at: 09.04.24
+ * Created at: 10.04.24
  */
 
-@EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Entity
-public class File extends Resource {
+@Embeddable
+public class SharedResourceId implements Serializable {
 
-    private String type;
-    private Long size;
+    private String resourceId;
+    private Long userId;
 }

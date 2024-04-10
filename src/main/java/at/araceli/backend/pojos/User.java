@@ -18,10 +18,11 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Table(name = "araceliuser")
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_seq")
     @SequenceGenerator(name = "user_seq", allocationSize = 1)
     private Long userId;
     private String username;
@@ -30,6 +31,16 @@ public class User {
     private String token;
     private String tokenExpiresAt;
 
-    @OneToMany
+    @OneToMany(mappedBy = "creator")
+    private List<Resource> resources = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user")
     private List<SharedResource> sharedResources = new ArrayList<>();
+
+    @OneToMany(mappedBy = "creator")
+    private List<Event> events = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user")
+    private List<SharedCalendar> sharedCalendars = new ArrayList<>();
+
 }
