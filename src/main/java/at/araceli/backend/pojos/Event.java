@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 /**
  * Project: araceli-backend
- * Created by: Nico Bulut
+ * Created by: Nico Bulut, Michael Hütter
  * Created at: 10.04.24
  */
 
