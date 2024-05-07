@@ -87,7 +87,7 @@ public class TodoListService {
                 }
             }
             todoListRepo.save(todoListInDB);
-            return ResponseEntity.ok(todoListInDB);
+            return ResponseEntity.accepted().body(todoListInDB);
         }
 
         return ResponseEntity.notFound().build();
