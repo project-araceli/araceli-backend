@@ -89,6 +89,8 @@ public class TodoListService {
             todoListRepo.save(todoListInDB);
             return ResponseEntity.ok(todoListInDB);
         }
+
+        return ResponseEntity.notFound().build();
     }
 
     @PatchMapping("/item/{itemId}")
