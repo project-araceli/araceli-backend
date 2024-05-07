@@ -1,9 +1,11 @@
 package at.araceli.backend.pojos;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +28,16 @@ public class TodoList {
     private Long todoListId;
     private String title;
 
-    @OneToMany(mappedBy = "todoList")
+    @JsonManagedReference
+    @OneToMany(mappedBy = "todoList", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Item> items = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "creator_id")
+    private User creator;
+
+    public void addToDoList(Item item) {
+        items.add(item);
+        item.setTodoList(this);
+    }
 }

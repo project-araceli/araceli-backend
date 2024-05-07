@@ -43,4 +43,6 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<SharedCalendar> sharedCalendars = new ArrayList<>();
 
+    @OneToMany(mappedBy = "creator")
+    private List<TodoList> todoLists = new ArrayList<>();
 }

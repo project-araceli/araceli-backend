@@ -1,9 +1,11 @@
 package at.araceli.backend.pojos;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 /**
  * Project: araceli-backend
@@ -24,6 +26,8 @@ public class Item {
     private String description;
     private Boolean isDone;
 
+    @ToString.Exclude
+    @JsonBackReference
     @ManyToOne
     @JoinColumn(name = "todo_list_id")
     private TodoList todoList;
