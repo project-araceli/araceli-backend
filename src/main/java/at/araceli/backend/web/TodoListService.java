@@ -2,8 +2,11 @@ package at.araceli.backend.web;
 
 import at.araceli.backend.db.ItemRepository;
 import at.araceli.backend.db.TodoListRepository;
+import at.araceli.backend.db.UserRepository;
 import at.araceli.backend.pojos.Item;
 import at.araceli.backend.pojos.TodoList;
+import at.araceli.backend.pojos.User;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -12,6 +15,7 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Optional;
 
 
@@ -30,6 +34,12 @@ public class TodoListService {
 
     private final TodoListRepository todoListRepo;
     private final ItemRepository itemRepo;
+    private final UserRepository userRepo;
+
+    @PostConstruct
+    public void test() {
+        userRepo.save(new User(null, "test", "test@test.com", "", "", null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
+    }
 
     @GetMapping
     public ResponseEntity<Iterable<TodoList>> getAllTodoListsByUser(@RequestParam Long userId) {
@@ -42,8 +52,18 @@ public class TodoListService {
     }
 
     @PostMapping
-    public ResponseEntity<TodoList> createTodoList(@RequestBody TodoList todoList) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(todoListRepo.save(todoList));
+    public ResponseEntity<TodoList> createTodoList(@RequestParam Long userId, @RequestBody TodoList todoList) {
+        Optional<User> optionalUser = userRepo.findById(userId);
+
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            user.getTodoLists().add(todoList);
+            todoList.setCreator(user);
+            todoListRepo.save(todoList);
+            return ResponseEntity.status(HttpStatus.CREATED).body(todoList);
+        }
+
+        return ResponseEntity.notFound().build();
     }
 
     @PostMapping("/{todoListId}/addItem")

@@ -1,5 +1,6 @@
 package at.araceli.backend.pojos;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -43,6 +44,7 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<SharedCalendar> sharedCalendars = new ArrayList<>();
 
-    @OneToMany(mappedBy = "creator")
+    @JsonManagedReference
+    @OneToMany(mappedBy = "creator", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TodoList> todoLists = new ArrayList<>();
 }

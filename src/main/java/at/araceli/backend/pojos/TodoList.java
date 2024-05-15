@@ -1,5 +1,7 @@
 package at.araceli.backend.pojos;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -32,7 +34,8 @@ public class TodoList {
     @OneToMany(mappedBy = "todoList", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Item> items = new ArrayList<>();
 
-    @ManyToOne
+    @JsonBackReference
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "creator_id")
     private User creator;
 
