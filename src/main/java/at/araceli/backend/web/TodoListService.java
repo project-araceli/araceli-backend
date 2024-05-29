@@ -15,6 +15,7 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Field;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -36,9 +37,10 @@ public class TodoListService {
     private final ItemRepository itemRepo;
     private final UserRepository userRepo;
 
+    // TODO: remove after tests
     @PostConstruct
     public void test() {
-        userRepo.save(new User(null, "test", "test@test.com", "", "", null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
+        userRepo.save(new User(null, "test", "test@test.com", "", "", null, null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
     }
 
     @GetMapping
@@ -135,14 +137,14 @@ public class TodoListService {
     }
 
     @PatchMapping("/item/{itemId}/toggleDone")
-    public ResponseEntity<String> setDoneItem(@PathVariable String itemId) {
+    public ResponseEntity<Item> setDoneItem(@PathVariable String itemId) {
         Optional<Item> optionalItem = itemRepo.findById(itemId);
 
         if (optionalItem.isPresent()) {
             Item item = optionalItem.get();
             item.setIsDone(!item.getIsDone());
             itemRepo.save(item);
-            return ResponseEntity.accepted().body(itemId);
+            return ResponseEntity.accepted().body(item);
         }
 
         return ResponseEntity.notFound().build();
