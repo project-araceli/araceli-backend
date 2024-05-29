@@ -15,6 +15,7 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Field;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -39,7 +40,7 @@ public class TodoListService {
     // TODO: remove after tests
     @PostConstruct
     public void test() {
-        userRepo.save(new User(null, "test", "test@test.com", "", "", null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
+        userRepo.save(new User(null, "test", "test@test.com", "", "", null, null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
     }
 
     @GetMapping
