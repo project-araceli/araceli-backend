@@ -1,17 +1,22 @@
 package at.araceli.backend.web;
 
+import at.araceli.backend.db.ResourceRepository;
 import at.araceli.backend.db.UserRepository;
 import at.araceli.backend.io.IOAccess;
-import at.araceli.backend.pojos.Resource;
-import at.araceli.backend.pojos.SharedResource;
-import at.araceli.backend.pojos.User;
+import at.araceli.backend.pojos.*;
+import at.araceli.backend.pojos.enums.ResourceType;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.swing.text.html.Option;
+import java.io.File;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -27,22 +32,46 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ResourceService {
 
-    private final UserRepository userRepository;
+    private final UserRepository userRepo;
+    private final ResourceRepository resourceRepo;
+
+    // TODO: remove after tests
+    @PostConstruct
+    public void test() {
+        User user = new User();
+        user.setUsername("test");
+        user.setToken("TOKEN");
+        user.setTokenExpiresAt(LocalDateTime.now().plusHours(1));
+        userRepo.save(user);
+        Resource folder = new Resource();
+        folder.setName("Folder#1");
+        folder.setType(ResourceType.FOLDER);
+        folder.setCreatedAt(LocalDateTime.now());
+        folder.setCreator(user);
+        user.getResources().add(folder);
+        userRepo.save(user);
+        IOAccess.createFolderStructureForNewUser(user);
+        // userRepo.save(new User(null, "test", "test@test.com", "", "", null, null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
+    }
 
     @GetMapping
-    public ResponseEntity<Iterable<Resource>> getOwnResourcesByUserId(@RequestParam Long userId) {
-        User user = userRepository.findById(userId).orElse(null);
+    public ResponseEntity<Iterable<Resource>> getOwnResources(@RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
 
-        if (user != null) {
-            return ResponseEntity.ok(user.getResources());
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        return ResponseEntity.notFound().build();
+        if (user.getResources().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        }
+
+        return ResponseEntity.ok(user.getResources());
     }
 
     @GetMapping("/shared")
     public ResponseEntity<Iterable<Resource>> getSharedResourcesByUserId(@RequestParam Long userId) {
-        User user = userRepository.findById(userId).orElse(null);
+        User user = userRepo.findById(userId).orElse(null);
 
         if (user != null) {
             return ResponseEntity.ok(user.getSharedResources().stream().map(SharedResource::getResource).toList());
@@ -52,14 +81,71 @@ public class ResourceService {
     }
 
     @PostMapping
-    public ResponseEntity<Resource> createResource(@RequestHeader(name = "Authorization") String auth, @RequestParam MultipartFile file, @RequestBody Resource resource) {
-        Resource parent = resource.getParent();
+    public ResponseEntity<Resource> createResource(@RequestHeader(name = "Authorization") String auth,
+                                                   @RequestParam MultipartFile file, @RequestParam String name,
+                                                   @RequestParam String parentId,
+                                                   @RequestParam String contentType) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        if (parent != null) {
+        // get parent from DB
+        Resource parent = resourceRepo.findById(parentId).orElse(null);
+        if (parent == null && !parentId.equals("root")) {
             return ResponseEntity.badRequest().build();
         }
 
-        return ResponseEntity.badRequest().build();
+        Resource resource = new Resource();
+        resource.setCreatedAt(LocalDateTime.now());
+        resource.setName(name);
+        resource.setType(ResourceType.FILE);
+        resource.setContentType(contentType);
+
+        resource.setCreator(user);
+        resource.setParent(parent);
+        if (!parentId.equals("root")) {
+            parent.getChildren().add(resource);
+        }
+        user.getResources().add(resource);
+
+        boolean didWriteToFS = IOAccess.writeFileToFileSystem(resource, file, resourceRepo);
+        if (!didWriteToFS) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
+        resourceRepo.save(resource);
+        userRepo.save(user);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(resource);
     }
 
+    @GetMapping("/download/{id}")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadResource(@PathVariable String id, @RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Optional<Resource> optionalResource = user.getResources().stream().filter(x -> x.getResourceId().equals(id)).findFirst();
+        if (optionalResource.isPresent()) {
+            ByteArrayResource byteArrayResource = IOAccess.readFileFromFileSystem(optionalResource.get(), resourceRepo);
+            Long fileLength = 0L;
+
+            if (byteArrayResource != null) {
+                try {
+                    File file = IOAccess.getFileByResource(optionalResource.get(), resourceRepo);
+                    fileLength = file.length();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            return ResponseEntity.ok()
+                    .contentLength(fileLength)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(byteArrayResource);
+        }
+        return ResponseEntity.notFound().build();
+    }
 }
