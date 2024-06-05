@@ -65,6 +65,16 @@ public class IOAccess {
         return new File(path.toFile().getAbsolutePath());
     }
 
+    public static boolean deleteFileByResource(Resource resource, ResourceRepository resourceRepo) {
+        Path path = Paths.get(IOAccess.getFilePathByResource(resource, resourceRepo));
+        try {
+            Files.delete(path);
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
+    }
+
     public static String getFilePathByResource(Resource resource, ResourceRepository resourceRepo) {
         List<String> resourcePaths = new ArrayList<>();
 

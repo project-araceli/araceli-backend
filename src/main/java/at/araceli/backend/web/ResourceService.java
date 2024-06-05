@@ -148,4 +148,24 @@ public class ResourceService {
         }
         return ResponseEntity.notFound().build();
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteResource(@PathVariable String id, @RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Resource resource = resourceRepo.findById(id).orElse(null);
+        if (resource == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        IOAccess.deleteFileByResource(resource, resourceRepo);
+
+        resourceRepo.delete(resource);
+
+        return ResponseEntity.accepted().build();
+    }
+
 }
