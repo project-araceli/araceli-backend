@@ -27,7 +27,7 @@ import java.util.List;
 @Slf4j
 public class IOAccess {
 
-    public static final String FILE_DIRECTORY = "/Users/nicobulut/Desktop/temp";
+    public static String FILE_DIRECTORY;
 
     public static boolean writeFileToFileSystem(Resource resource, MultipartFile multipartFile, ResourceRepository resourceRepo) {
         try (InputStream is = multipartFile.getInputStream()) {
@@ -77,5 +77,11 @@ public class IOAccess {
         resourcePaths.add(0, FILE_DIRECTORY);
         resourcePaths.add(resource.getName());
         return String.join(File.separator, resourcePaths);
+    }
+
+    public static void setFileDirectory(String fileDirectory) {
+        if (FILE_DIRECTORY == null) {
+            FILE_DIRECTORY = fileDirectory;
+        }
     }
 }
