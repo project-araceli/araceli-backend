@@ -11,17 +11,22 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Project: araceli-backend
@@ -38,14 +43,14 @@ public class AuthService {
 
     private final UserRepository userRepo;
 
-    private static final SecureRandom secureRandom = new SecureRandom(); //threadsafe
-    private static final Base64.Encoder base64Encoder = Base64.getUrlEncoder(); //threadsafe
-
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom(); //threadsafe
+    private static final Base64.Encoder BASE_64_ENCODER = Base64.getUrlEncoder(); //threadsafe
+    private static final BCryptPasswordEncoder B_CRYPT_PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     public static String generateNewToken() {
         byte[] randomBytes = new byte[24];
-        secureRandom.nextBytes(randomBytes);
-        return base64Encoder.encodeToString(randomBytes);
+        SECURE_RANDOM.nextBytes(randomBytes);
+        return BASE_64_ENCODER.encodeToString(randomBytes);
     }
 
     private Optional<User> isValidUser(String token, Integer tokenExpiresIn) throws GeneralSecurityException, IOException {
@@ -85,8 +90,61 @@ public class AuthService {
         return Optional.empty();
     }
 
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@RequestBody String username,
+                                           @RequestBody String email,
+                                           @RequestBody String imageUrl,
+                                           @RequestBody String password) {
+
+        Optional<User> userExists = userRepo.findByEmail(email);
+        if (userExists.isPresent()) {
+            return ResponseEntity.badRequest().body("User already exists");
+        }
+
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(email);
+        if (!imageUrl.isEmpty()) user.setImageUrl(imageUrl);
+        user.setPasswordHash(B_CRYPT_PASSWORD_ENCODER.encode(password));
+        user.setToken(generateNewToken());
+        user.setTokenExpiresAt(LocalDateTime.now().plusDays(30));
+        userRepo.save(user);
+
+        return ResponseEntity.ok(user.getToken());
+    }
+
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+    public ResponseEntity<String> login(@RequestBody String email, @RequestBody String password) {
+
+        Optional<User> userInDB = userRepo.findByEmail(email);
+        if (userInDB.isEmpty()) {
+            userInDB = userRepo.findByUsername(email);
+        }
+
+        if (userInDB.isPresent()) {
+            Optional<String> hashedPasswordOptional = userRepo.getUserPassword(userInDB.get().getUsername());
+            if (hashedPasswordOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body("Use a different login method");
+            }
+
+            String hashedPassword = hashedPasswordOptional.get();
+            if (!B_CRYPT_PASSWORD_ENCODER.matches(password, hashedPassword)) {
+                return ResponseEntity.badRequest().body("Invalid email or password");
+            }
+
+            User user = userInDB.get();
+            user.setToken(generateNewToken());
+            user.setTokenExpiresAt(LocalDateTime.now().plusDays(30));
+            userRepo.save(user);
+
+            return ResponseEntity.ok().body(user.getToken());
+        }
+
+        return ResponseEntity.badRequest().body("Invalid email or password");
+    }
+
+    @PostMapping("/googleAuthenticate")
+    public ResponseEntity<String> googleAuthenticate(@RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
         Optional<User> optionalUser = Optional.empty();
 
         try {
@@ -105,14 +163,12 @@ public class AuthService {
         if (optionalUser.isPresent()) {
 
             User userInDb = optionalUser.get();
-            if (!userInDb.getTokenExpiresAt().isAfter(LocalDateTime.now())) {
-                userInDb.setToken(user.getToken());
-                userInDb.setTokenExpiresAt(user.getTokenExpiresAt());
-                
-                userRepo.save(userInDb);
-            }
+            userInDb.setToken(user.getToken());
+            userInDb.setTokenExpiresAt(user.getTokenExpiresAt());
 
-            return ResponseEntity.status(200).body(optionalUser.get().getToken());
+            userRepo.save(userInDb);
+
+            return ResponseEntity.status(200).body(userInDb.getToken());
         }
 
         userRepo.save(user);
