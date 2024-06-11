@@ -4,16 +4,14 @@ import at.araceli.backend.db.ResourceRepository;
 import at.araceli.backend.pojos.Resource;
 import at.araceli.backend.pojos.User;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -80,6 +78,12 @@ public class IOAccess {
         Path path = Paths.get(IOAccess.getFilePathByResource(resource, resourceRepo));
         try {
             Files.delete(path);
+        } catch (DirectoryNotEmptyException e) {
+            try {
+                FileUtils.deleteDirectory(path.toFile());
+            } catch (IOException ex) {
+                return false;
+            }
         } catch (IOException e) {
             return false;
         }
@@ -88,15 +92,20 @@ public class IOAccess {
 
     public static String getFilePathByResource(Resource resource, ResourceRepository resourceRepo) {
         List<String> resourcePaths = new ArrayList<>();
+        String creator = resource.getCreator().getUsername();
 
-        while (resource != null && resource.getParent() != null) {
+        while (resource != null) {
             resourcePaths.add(resource.getName());
-            resource = resourceRepo.findById(resource.getParent().getResourceId()).orElse(null);
+            log.info(resourcePaths.toString());
+            resource = resource.getParent();
         }
+        log.info(resourcePaths.toString());
         Collections.reverse(resourcePaths);
-        resourcePaths.add(0, resource.getCreator().getUsername());
+        log.info(resourcePaths.toString());
+        resourcePaths.add(0, creator);
+        log.info(resourcePaths.toString());
         resourcePaths.add(0, FILE_DIRECTORY);
-        resourcePaths.add(resource.getName());
+        log.info(resourcePaths.toString());
         return String.join(File.separator, resourcePaths);
     }
 

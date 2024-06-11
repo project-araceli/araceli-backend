@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -63,11 +64,13 @@ public class ResourceService {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (user.getResources().isEmpty()) {
+        List<Resource> resourceList = resourceRepo.findAllRootElementsByUserId(user.getUserId());
+
+        if (resourceList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }
 
-        return ResponseEntity.ok(user.getResources());
+        return ResponseEntity.ok(resourceList);
     }
 
     @GetMapping("/shared")

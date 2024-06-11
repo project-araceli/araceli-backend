@@ -41,7 +41,7 @@ public class Resource {
     private Resource parent;
 
     @JsonManagedReference
-    @OneToMany(mappedBy = "parent")
+    @OneToMany(mappedBy = "parent", fetch = FetchType.EAGER, orphanRemoval = true)
     private List<Resource> children;
 
     @OneToMany(mappedBy = "resource")
