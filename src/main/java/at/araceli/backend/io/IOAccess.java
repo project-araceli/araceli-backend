@@ -40,6 +40,17 @@ public class IOAccess {
         return true;
     }
 
+    public static boolean writeFolderToFileSystem(Resource resource, ResourceRepository resourceRepo) {
+        Path path = Path.of(getFilePathByResource(resource, resourceRepo));
+        log.info(path.toString());
+        try {
+            Files.createDirectory(path);
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
+    }
+
     public static boolean createFolderStructureForNewUser(User user) {
         try {
             Files.createDirectory(Paths.get(FILE_DIRECTORY + File.separator + user.getUsername()));

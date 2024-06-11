@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Optional;
 
 /**
@@ -82,7 +83,7 @@ public class ResourceService {
 
     @PostMapping
     public ResponseEntity<Resource> createResource(@RequestHeader(name = "Authorization") String auth,
-                                                   @RequestParam MultipartFile file, @RequestParam String name,
+                                                   @RequestParam(required = false) MultipartFile file, @RequestParam String name,
                                                    @RequestParam String parentId,
                                                    @RequestParam String contentType) {
         User user = userRepo.findByToken(auth).orElse(null);
@@ -101,6 +102,11 @@ public class ResourceService {
         resource.setName(name);
         resource.setType(ResourceType.FILE);
         resource.setContentType(contentType);
+        if (contentType.equals("FOLDER")) {
+            resource.setType(ResourceType.FOLDER);
+            resource.setChildren(new ArrayList<>());
+            resource.setContentType(null);
+        }
 
         resource.setCreator(user);
         resource.setParent(parent);
@@ -109,9 +115,16 @@ public class ResourceService {
         }
         user.getResources().add(resource);
 
-        boolean didWriteToFS = IOAccess.writeFileToFileSystem(resource, file, resourceRepo);
-        if (!didWriteToFS) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        if (contentType.equals("FOLDER")) {
+            boolean didWriteToFS = IOAccess.writeFolderToFileSystem(resource, resourceRepo);
+            if (!didWriteToFS) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            }
+        } else {
+            boolean didWriteToFS = IOAccess.writeFileToFileSystem(resource, file, resourceRepo);
+            if (!didWriteToFS) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            }
         }
 
         resourceRepo.save(resource);
