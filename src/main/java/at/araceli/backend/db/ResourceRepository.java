@@ -10,4 +10,7 @@ public interface ResourceRepository extends JpaRepository<Resource, String> {
 
     @Query("SELECT r FROM Resource r WHERE r.creator.userId = :userId AND r.parent IS NULL")
     List<Resource> findAllRootElementsByUserId(Long userId);
+
+    @Query("SELECT r FROM Resource r WHERE r.creator.userId = :userId AND r.name LIKE %:name%")
+    List<Resource> findAllByUserIdAndLikeName(Long userId, String name);
 }
