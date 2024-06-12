@@ -14,17 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.KeySpec;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -122,7 +114,7 @@ public class AuthService {
         }
 
         if (userInDB.isPresent()) {
-            Optional<String> hashedPasswordOptional = userRepo.getUserPassword(userInDB.get().getUsername());
+            Optional<String> hashedPasswordOptional = userRepo.getUserPasswordHash(userInDB.get().getUsername());
             if (hashedPasswordOptional.isEmpty()) {
                 return ResponseEntity.badRequest().body("Use a different login method");
             }
