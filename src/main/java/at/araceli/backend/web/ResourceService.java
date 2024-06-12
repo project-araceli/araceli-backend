@@ -45,13 +45,6 @@ public class ResourceService {
         user.setToken("TOKEN");
         user.setTokenExpiresAt(LocalDateTime.now().plusHours(1));
         userRepo.save(user);
-        Resource folder = new Resource();
-        folder.setName("Folder#1");
-        folder.setType(ResourceType.FOLDER);
-        folder.setCreatedAt(LocalDateTime.now());
-        folder.setCreator(user);
-        user.getResources().add(folder);
-        userRepo.save(user);
         IOAccess.createFolderStructureForNewUser(user);
         // userRepo.save(new User(null, "test", "test@test.com", "", "", null, null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
     }
