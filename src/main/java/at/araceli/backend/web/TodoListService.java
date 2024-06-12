@@ -37,12 +37,6 @@ public class TodoListService {
     private final ItemRepository itemRepo;
     private final UserRepository userRepo;
 
-    // TODO: remove after tests
-    @PostConstruct
-    public void test() {
-        userRepo.save(new User(null, "test", "test@test.com", "", "", null, null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
-    }
-
     @GetMapping
     public ResponseEntity<Iterable<TodoList>> getAllTodoListsByUser(@RequestParam Long userId) {
         return ResponseEntity.ok(todoListRepo.findByUserId(userId));
