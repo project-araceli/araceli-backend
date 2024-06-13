@@ -67,10 +67,6 @@ public class ResourceService {
             resourceList = resourceRepo.findAllByUserAndFileExtension(user.getUserId(), fileExtension.toUpperCase());
         }
 
-        if (resourceList.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-        }
-
         return ResponseEntity.ok(resourceList);
     }
 
