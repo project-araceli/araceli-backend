@@ -45,8 +45,8 @@ public class ResourceService {
         user.setToken("TOKEN");
         user.setTokenExpiresAt(LocalDateTime.now().plusHours(1));
         userRepo.save(user);
+        // TODO: add this line to register function, must be executed for every new user
         IOAccess.createFolderStructureForNewUser(user);
-        // userRepo.save(new User(null, "test", "test@test.com", "", "", null, null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
     }
 
     @GetMapping
@@ -179,6 +179,25 @@ public class ResourceService {
         resourceRepo.delete(resource);
 
         return ResponseEntity.accepted().build();
+    }
+
+    @GetMapping("/{id}/path")
+    public ResponseEntity<String> getResourcePath(@PathVariable String id, @RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Resource resource = resourceRepo.findById(id).orElse(null);
+        if (resource == null || !resource.getCreator().getUserId().equals(user.getUserId())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        String path = "/" + IOAccess.getRelativeFilePathByResource(resource);
+        if (!File.separator.equals("/")) {
+            path = path.replaceAll("\\\\", "/");
+        }
+        return ResponseEntity.ok(path);
     }
 
 }

@@ -109,6 +109,21 @@ public class IOAccess {
         return String.join(File.separator, resourcePaths);
     }
 
+    public static String getRelativeFilePathByResource(Resource resource) {
+        List<String> resourcePaths = new ArrayList<>();
+        String creator = resource.getCreator().getUsername();
+
+        while (resource != null) {
+            resourcePaths.add(resource.getName());
+            log.info(resourcePaths.toString());
+            resource = resource.getParent();
+        }
+        log.info(resourcePaths.toString());
+        Collections.reverse(resourcePaths);
+        log.info(resourcePaths.toString());
+        return String.join(File.separator, resourcePaths);
+    }
+
     public static void setFileDirectory(String fileDirectory) {
         if (FILE_DIRECTORY == null) {
             FILE_DIRECTORY = fileDirectory;

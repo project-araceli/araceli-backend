@@ -2,6 +2,7 @@ package at.araceli.backend.pojos;
 
 import at.araceli.backend.pojos.enums.ResourceType;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -29,6 +30,7 @@ public class Resource {
     private String resourceId;
     private String name;
     private String description;
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDateTime createdAt;
     @Enumerated(EnumType.ORDINAL)
     private ResourceType type;
