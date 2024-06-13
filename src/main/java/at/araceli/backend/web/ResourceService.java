@@ -50,17 +50,22 @@ public class ResourceService {
     }
 
     @GetMapping
-    public ResponseEntity<Iterable<Resource>> getOwnResources(@RequestHeader(name = "Authorization") String auth, @RequestParam(required = false) String search) {
+    public ResponseEntity<Iterable<Resource>> getOwnResources(@RequestHeader(name = "Authorization") String auth, @RequestParam(required = false) String search, @RequestParam(required = false) String fileExtension) {
         User user = userRepo.findByToken(auth).orElse(null);
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        List<Resource> resourceList = resourceRepo.findAllRootElementsByUserId(user.getUserId());;
-        if (search != null && !search.isBlank()) {
-            resourceList = resourceRepo.findAllByUserIdAndLikeName(user.getUserId(), search);
-        }
+        List<Resource> resourceList = resourceRepo.findAllRootElementsByUserId(user.getUserId());
 
+        if (search != null && !search.isBlank() && fileExtension != null && !fileExtension.isBlank()) {
+            resourceList.retainAll(resourceRepo.findAllByUserIdAndLikeName(user.getUserId(), search));
+            resourceList.retainAll(resourceRepo.findAllByUserAndFileExtension(user.getUserId(), fileExtension.toUpperCase()));
+        } else if (search != null && !search.isBlank()) {
+            resourceList = resourceRepo.findAllByUserIdAndLikeName(user.getUserId(), search);
+        } else if (fileExtension != null && !fileExtension.isBlank()) {
+            resourceList = resourceRepo.findAllByUserAndFileExtension(user.getUserId(), fileExtension.toUpperCase());
+        }
 
         if (resourceList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();

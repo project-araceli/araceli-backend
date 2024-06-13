@@ -13,4 +13,7 @@ public interface ResourceRepository extends JpaRepository<Resource, String> {
 
     @Query("SELECT r FROM Resource r WHERE r.creator.userId = :userId AND r.name LIKE %:name%")
     List<Resource> findAllByUserIdAndLikeName(Long userId, String name);
+
+    @Query("SELECT r FROM Resource r WHERE r.creator.userId = :userId AND UPPER(r.name) LIKE %:extension")
+    List<Resource> findAllByUserAndFileExtension(Long userId, String extension);
 }
