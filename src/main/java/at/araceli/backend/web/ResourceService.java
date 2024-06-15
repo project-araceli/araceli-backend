@@ -116,12 +116,12 @@ public class ResourceService {
         user.getResources().add(resource);
 
         if (contentType.equals("FOLDER")) {
-            boolean didWriteToFS = IOAccess.writeFolderToFileSystem(resource, resourceRepo);
+            boolean didWriteToFS = IOAccess.writeFolderToFileSystem(resource);
             if (!didWriteToFS) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
             }
         } else {
-            boolean didWriteToFS = IOAccess.writeFileToFileSystem(resource, file, resourceRepo);
+            boolean didWriteToFS = IOAccess.writeFileToFileSystem(resource, file);
             if (!didWriteToFS) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
             }
@@ -142,12 +142,12 @@ public class ResourceService {
 
         Optional<Resource> optionalResource = user.getResources().stream().filter(x -> x.getResourceId().equals(id)).findFirst();
         if (optionalResource.isPresent()) {
-            ByteArrayResource byteArrayResource = IOAccess.readFileFromFileSystem(optionalResource.get(), resourceRepo);
+            ByteArrayResource byteArrayResource = IOAccess.readFileFromFileSystem(optionalResource.get());
             Long fileLength = 0L;
 
             if (byteArrayResource != null) {
                 try {
-                    File file = IOAccess.getFileByResource(optionalResource.get(), resourceRepo);
+                    File file = IOAccess.getFileByResource(optionalResource.get());
                     fileLength = file.length();
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -174,7 +174,7 @@ public class ResourceService {
             return ResponseEntity.notFound().build();
         }
 
-        IOAccess.deleteFileByResource(resource, resourceRepo);
+        IOAccess.deleteFileByResource(resource);
 
         resourceRepo.delete(resource);
 
@@ -190,7 +190,7 @@ public class ResourceService {
 
         Resource resource = resourceRepo.findById(id).orElse(null);
         if (resource == null || !resource.getCreator().getUserId().equals(user.getUserId())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.badRequest().build();
         }
 
         String path = "/" + IOAccess.getRelativeFilePathByResource(resource);
@@ -198,6 +198,88 @@ public class ResourceService {
             path = path.replaceAll("\\\\", "/");
         }
         return ResponseEntity.ok(path);
+    }
+
+    @PatchMapping("/{id}/name")
+    public ResponseEntity<Resource> updateResourceName(@PathVariable String id, @RequestParam String name, @RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Resource resource = resourceRepo.findById(id).orElse(null);
+        if (resource == null || !resource.getCreator().getUserId().equals(user.getUserId())) {
+            return ResponseEntity.notFound().build();
+        }
+
+        resource.setName(name);
+        resourceRepo.save(resource);
+
+        return ResponseEntity.ok().body(resource);
+    }
+
+    @PatchMapping("/{id}/path")
+    public ResponseEntity<?> changeResourcePath(@PathVariable String id, @RequestParam String newParentId, @RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Resource resource = resourceRepo.findById(id).orElse(null);
+        if (resource == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource oldParentResource = resource.getParent();
+        Resource newParentResource = resourceRepo.findById(newParentId).orElse(null);
+
+        if (!newParentId.equals("root") && newParentResource == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (!resource.getCreator().getUserId().equals(user.getUserId()) || (newParentResource != null && !newParentResource.getCreator().getUserId().equals(user.getUserId()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (oldParentResource == newParentResource) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
+        boolean isSuccessful = IOAccess.moveFile(resource, newParentResource);
+        if (!isSuccessful) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
+        if (oldParentResource == null) {
+            user.getResources().remove(resource);
+            log.info(user.toString());
+        } else {
+            oldParentResource.getChildren().remove(resource);
+            log.info("oldParentResource#1: {}", oldParentResource);
+        }
+
+        resource.setParent(newParentResource);
+        log.info("newParentResource#1: {}", newParentResource);
+
+        if (newParentResource == null) {
+            user.getResources().add(resource);
+            log.info(user.toString());
+        } else {
+            newParentResource.getChildren().add(resource);
+            log.info("newParentResource#2: {}", newParentResource);
+        }
+
+        if (oldParentResource != null) {
+            log.info("OLD SAVED LOL");
+            resourceRepo.save(oldParentResource);
+        }
+        if (newParentResource == null || oldParentResource == null) {
+            log.info("USER SAVED LOL");
+            userRepo.save(user);
+        }
+        if (newParentResource != null) {
+            log.info("NEW SAVED LOL");
+            resourceRepo.save(newParentResource);
+        }
+
+        return ResponseEntity.accepted().build();
     }
 
 }
