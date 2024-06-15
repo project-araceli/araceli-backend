@@ -138,6 +138,20 @@ public class IOAccess {
         return true;
     }
 
+    public static boolean renameFile(Resource resource, String newName) {
+        String parentPath = FILE_DIRECTORY + File.separator + resource.getCreator().getUsername();
+        if (resource.getParent() != null) {
+            parentPath = IOAccess.getFilePathByResource(resource.getParent());
+        }
+        try {
+            Files.move(Paths.get(IOAccess.getFilePathByResource(resource)), Paths.get(parentPath + File.separator + newName));
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
+    }
+
     public static void setFileDirectory(String fileDirectory) {
         if (FILE_DIRECTORY == null) {
             FILE_DIRECTORY = fileDirectory;

@@ -212,6 +212,11 @@ public class ResourceService {
             return ResponseEntity.notFound().build();
         }
 
+        boolean isSuccessful = IOAccess.renameFile(resource, name);
+        if (!isSuccessful) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
         resource.setName(name);
         resourceRepo.save(resource);
 
@@ -219,7 +224,7 @@ public class ResourceService {
     }
 
     @PatchMapping("/{id}/path")
-    public ResponseEntity<?> changeResourcePath(@PathVariable String id, @RequestParam String newParentId, @RequestHeader(name = "Authorization") String auth) {
+    public ResponseEntity<Resource> changeResourcePath(@PathVariable String id, @RequestParam String newParentId, @RequestHeader(name = "Authorization") String auth) {
         User user = userRepo.findByToken(auth).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -279,7 +284,7 @@ public class ResourceService {
             resourceRepo.save(newParentResource);
         }
 
-        return ResponseEntity.accepted().build();
+        return ResponseEntity.accepted().body(resource);
     }
 
 }

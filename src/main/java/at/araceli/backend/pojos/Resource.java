@@ -31,7 +31,7 @@ public class Resource {
     private String resourceId;
     private String name;
     private String description;
-    @JsonFormat(pattern = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime createdAt;
     @Enumerated(EnumType.ORDINAL)
     private ResourceType type;
