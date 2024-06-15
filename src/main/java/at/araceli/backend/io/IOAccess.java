@@ -29,9 +29,11 @@ public class IOAccess {
     public static String FILE_DIRECTORY;
 
     public static boolean writeFileToFileSystem(Resource resource, MultipartFile multipartFile) {
+        Path path = Path.of(getFilePathByResource(resource));
+        if (Files.exists(path)) {
+            return false;
+        }
         try (InputStream is = multipartFile.getInputStream()) {
-            log.info(getFilePathByResource(resource));
-            Path path = Path.of(getFilePathByResource(resource));
             Files.write(path, is.readAllBytes());
         } catch (IOException e) {
             return false;
@@ -41,7 +43,9 @@ public class IOAccess {
 
     public static boolean writeFolderToFileSystem(Resource resource) {
         Path path = Path.of(getFilePathByResource(resource));
-        log.info(path.toString());
+        if (Files.exists(path)) {
+            return false;
+        }
         try {
             Files.createDirectory(path);
         } catch (IOException e) {
@@ -130,6 +134,9 @@ public class IOAccess {
             parentPath = IOAccess.getFilePathByResource(parentResource);
         }
         try {
+            if (Files.exists(Paths.get(parentPath + File.separator + resource.getName()))) {
+                return false;
+            }
             Files.write(Paths.get(parentPath + File.separator + resource.getName()), Objects.requireNonNull(IOAccess.readFileFromFileSystem(resource)).getByteArray());
             IOAccess.deleteFileByResource(resource);
         } catch (IOException | NullPointerException e) {
@@ -143,8 +150,12 @@ public class IOAccess {
         if (resource.getParent() != null) {
             parentPath = IOAccess.getFilePathByResource(resource.getParent());
         }
+        Path resourcePath = Paths.get(parentPath + File.separator + newName);
+        if (Files.exists(resourcePath)) {
+            return false;
+        }
         try {
-            Files.move(Paths.get(IOAccess.getFilePathByResource(resource)), Paths.get(parentPath + File.separator + newName));
+            Files.move(Paths.get(IOAccess.getFilePathByResource(resource)), resourcePath);
         } catch (IOException e) {
             return false;
         }

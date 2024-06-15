@@ -200,8 +200,8 @@ public class ResourceService {
         return ResponseEntity.ok(path);
     }
 
-    @PatchMapping("/{id}/name")
-    public ResponseEntity<Resource> updateResourceName(@PathVariable String id, @RequestParam String name, @RequestHeader(name = "Authorization") String auth) {
+    @PatchMapping("/{id}")
+    public ResponseEntity<Resource> updateResourceName(@PathVariable String id, @RequestParam(required = false) String name, @RequestParam(required = false) String description, @RequestHeader(name = "Authorization") String auth) {
         User user = userRepo.findByToken(auth).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -212,12 +212,18 @@ public class ResourceService {
             return ResponseEntity.notFound().build();
         }
 
-        boolean isSuccessful = IOAccess.renameFile(resource, name);
-        if (!isSuccessful) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        if (name != null) {
+            boolean isSuccessful = IOAccess.renameFile(resource, name);
+            if (!isSuccessful) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            }
+
+            resource.setName(name);
+        }
+        if (description != null) {
+            resource.setDescription(description);
         }
 
-        resource.setName(name);
         resourceRepo.save(resource);
 
         return ResponseEntity.ok().body(resource);
@@ -243,8 +249,9 @@ public class ResourceService {
         if (!resource.getCreator().getUserId().equals(user.getUserId()) || (newParentResource != null && !newParentResource.getCreator().getUserId().equals(user.getUserId()))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+        // moving the file to the same location does not make sense
         if (oldParentResource == newParentResource) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            return ResponseEntity.status(HttpStatus.I_AM_A_TEAPOT).build();
         }
 
         boolean isSuccessful = IOAccess.moveFile(resource, newParentResource);
