@@ -15,6 +15,7 @@ import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Project: araceli-backend
@@ -27,10 +28,12 @@ public class IOAccess {
 
     public static String FILE_DIRECTORY;
 
-    public static boolean writeFileToFileSystem(Resource resource, MultipartFile multipartFile, ResourceRepository resourceRepo) {
+    public static boolean writeFileToFileSystem(Resource resource, MultipartFile multipartFile) {
+        Path path = Path.of(getFilePathByResource(resource));
+        if (Files.exists(path)) {
+            return false;
+        }
         try (InputStream is = multipartFile.getInputStream()) {
-            log.info(getFilePathByResource(resource, resourceRepo));
-            Path path = Path.of(getFilePathByResource(resource, resourceRepo));
             Files.write(path, is.readAllBytes());
         } catch (IOException e) {
             return false;
@@ -38,9 +41,11 @@ public class IOAccess {
         return true;
     }
 
-    public static boolean writeFolderToFileSystem(Resource resource, ResourceRepository resourceRepo) {
-        Path path = Path.of(getFilePathByResource(resource, resourceRepo));
-        log.info(path.toString());
+    public static boolean writeFolderToFileSystem(Resource resource) {
+        Path path = Path.of(getFilePathByResource(resource));
+        if (Files.exists(path)) {
+            return false;
+        }
         try {
             Files.createDirectory(path);
         } catch (IOException e) {
@@ -58,8 +63,8 @@ public class IOAccess {
         return true;
     }
 
-    public static ByteArrayResource readFileFromFileSystem(Resource resource, ResourceRepository resourceRepo) {
-        Path path = Paths.get(IOAccess.getFilePathByResource(resource, resourceRepo));
+    public static ByteArrayResource readFileFromFileSystem(Resource resource) {
+        Path path = Paths.get(IOAccess.getFilePathByResource(resource));
         ByteArrayResource resourceAsByteArray;
         try {
             resourceAsByteArray = new ByteArrayResource(Files.readAllBytes(path));
@@ -69,13 +74,13 @@ public class IOAccess {
         }
     }
 
-    public static File getFileByResource(Resource resource, ResourceRepository resourceRepo) {
-        Path path = Paths.get(IOAccess.getFilePathByResource(resource, resourceRepo));
+    public static File getFileByResource(Resource resource) {
+        Path path = Paths.get(IOAccess.getFilePathByResource(resource));
         return new File(path.toFile().getAbsolutePath());
     }
 
-    public static boolean deleteFileByResource(Resource resource, ResourceRepository resourceRepo) {
-        Path path = Paths.get(IOAccess.getFilePathByResource(resource, resourceRepo));
+    public static boolean deleteFileByResource(Resource resource) {
+        Path path = Paths.get(IOAccess.getFilePathByResource(resource));
         try {
             Files.delete(path);
         } catch (DirectoryNotEmptyException e) {
@@ -90,7 +95,7 @@ public class IOAccess {
         return true;
     }
 
-    public static String getFilePathByResource(Resource resource, ResourceRepository resourceRepo) {
+    public static String getFilePathByResource(Resource resource) {
         List<String> resourcePaths = new ArrayList<>();
         String creator = resource.getCreator().getUsername();
 
@@ -107,6 +112,55 @@ public class IOAccess {
         resourcePaths.add(0, FILE_DIRECTORY);
         log.info(resourcePaths.toString());
         return String.join(File.separator, resourcePaths);
+    }
+
+    public static String getRelativeFilePathByResource(Resource resource) {
+        List<String> resourcePaths = new ArrayList<>();
+
+        while (resource != null) {
+            resourcePaths.add(resource.getName());
+            log.info(resourcePaths.toString());
+            resource = resource.getParent();
+        }
+        log.info(resourcePaths.toString());
+        Collections.reverse(resourcePaths);
+        log.info(resourcePaths.toString());
+        return String.join(File.separator, resourcePaths);
+    }
+
+    public static boolean moveFile(Resource resource, Resource parentResource) {
+        String parentPath = FILE_DIRECTORY + File.separator + resource.getCreator().getUsername();
+        if (parentResource != null) {
+            parentPath = IOAccess.getFilePathByResource(parentResource);
+        }
+        try {
+            if (Files.exists(Paths.get(parentPath + File.separator + resource.getName()))) {
+                return false;
+            }
+            Files.write(Paths.get(parentPath + File.separator + resource.getName()), Objects.requireNonNull(IOAccess.readFileFromFileSystem(resource)).getByteArray());
+            IOAccess.deleteFileByResource(resource);
+        } catch (IOException | NullPointerException e) {
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean renameFile(Resource resource, String newName) {
+        String parentPath = FILE_DIRECTORY + File.separator + resource.getCreator().getUsername();
+        if (resource.getParent() != null) {
+            parentPath = IOAccess.getFilePathByResource(resource.getParent());
+        }
+        Path resourcePath = Paths.get(parentPath + File.separator + newName);
+        if (Files.exists(resourcePath)) {
+            return false;
+        }
+        try {
+            Files.move(Paths.get(IOAccess.getFilePathByResource(resource)), resourcePath);
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
     }
 
     public static void setFileDirectory(String fileDirectory) {
