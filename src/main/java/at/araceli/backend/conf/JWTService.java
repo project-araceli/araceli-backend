@@ -29,6 +29,7 @@ import java.util.function.Function;
 public class JWTService {
 
     private static final String SECRET = "5eef78740d3a4bfadbc3892a07bc5d0909af11862c84919521d73fcb8c8ce5ba";
+    private final AraceliBackendConfig config;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -48,7 +49,7 @@ public class JWTService {
     }
 
     private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET);
+        byte[] keyBytes = Decoders.BASE64.decode(config.getSecurityKey());
         return Keys.hmacShaKeyFor(keyBytes);
     }
 

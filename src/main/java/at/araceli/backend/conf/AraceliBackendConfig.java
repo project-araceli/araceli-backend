@@ -22,6 +22,7 @@ public class AraceliBackendConfig {
      * pathToFileSystem - path to file system which is used to save Resources e.g. /path/to/fs
      */
     private String pathToFileSystem;
+    private String securityKey;
 
     @PostConstruct
     public void init() {
