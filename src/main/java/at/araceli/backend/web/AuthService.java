@@ -2,6 +2,10 @@ package at.araceli.backend.web;
 
 import at.araceli.backend.db.UserRepository;
 import at.araceli.backend.pojos.User;
+import at.araceli.backend.security.AuthenticationRequest;
+import at.araceli.backend.security.AuthenticationResponse;
+import at.araceli.backend.security.AuthenticationService;
+import at.araceli.backend.security.RegisterRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -38,6 +42,8 @@ public class AuthService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom(); //threadsafe
     private static final Base64.Encoder BASE_64_ENCODER = Base64.getUrlEncoder(); //threadsafe
     private static final BCryptPasswordEncoder B_CRYPT_PASSWORD_ENCODER = new BCryptPasswordEncoder();
+
+    private final AuthenticationService service;
 
     public static String generateNewToken() {
         byte[] randomBytes = new byte[24];
@@ -82,28 +88,28 @@ public class AuthService {
         return Optional.empty();
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody String username,
-                                           @RequestBody String email,
-                                           @RequestBody String imageUrl,
-                                           @RequestBody String password) {
-
-        Optional<User> userExists = userRepo.findByEmail(email);
-        if (userExists.isPresent()) {
-            return ResponseEntity.badRequest().body("User already exists");
-        }
-
-        User user = new User();
-        user.setUsername(username);
-        user.setEmail(email);
-        if (!imageUrl.isEmpty()) user.setImageUrl(imageUrl);
-        user.setPasswordHash(B_CRYPT_PASSWORD_ENCODER.encode(password));
-        user.setToken(generateNewToken());
-        user.setTokenExpiresAt(LocalDateTime.now().plusDays(30));
-        userRepo.save(user);
-
-        return ResponseEntity.ok(user.getToken());
-    }
+//    @PostMapping("/register")
+//    public ResponseEntity<String> register(@RequestBody String username,
+//                                           @RequestBody String email,
+//                                           @RequestBody String imageUrl,
+//                                           @RequestBody String password) {
+//
+//        Optional<User> userExists = userRepo.findByEmail(email);
+//        if (userExists.isPresent()) {
+//            return ResponseEntity.badRequest().body("User already exists");
+//        }
+//
+//        User user = new User();
+//        user.setUsername(username);
+//        user.setEmail(email);
+//        if (!imageUrl.isEmpty()) user.setImageUrl(imageUrl);
+//        user.setPasswordHash(B_CRYPT_PASSWORD_ENCODER.encode(password));
+//        user.setToken(generateNewToken());
+//        user.setTokenExpiresAt(LocalDateTime.now().plusDays(30));
+//        userRepo.save(user);
+//
+//        return ResponseEntity.ok(user.getToken());
+//    }
 
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody String email, @RequestBody String password) {
@@ -167,4 +173,15 @@ public class AuthService {
 
         return ResponseEntity.status(200).body(user.getToken());
     }
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(service.register(request));
+    }
+
+    @PostMapping("/authenticate")
+    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
+        return ResponseEntity.ok(service.authenticate(request));
+    }
+
 }
