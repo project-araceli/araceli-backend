@@ -6,6 +6,7 @@ import at.araceli.backend.io.IOAccess;
 import at.araceli.backend.pojos.*;
 import at.araceli.backend.pojos.enums.ResourceType;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
@@ -50,8 +51,8 @@ public class ResourceService {
     }
 
     @GetMapping
-    public ResponseEntity<Iterable<Resource>> getOwnResources(@RequestHeader(name = "Authorization") String auth, @RequestParam(required = false) String search, @RequestParam(required = false) String fileExtension) {
-        User user = userRepo.findByToken(auth).orElse(null);
+    public ResponseEntity<Iterable<Resource>> getOwnResources(HttpServletRequest request, @RequestParam(required = false) String search, @RequestParam(required = false) String fileExtension) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -82,11 +83,11 @@ public class ResourceService {
     }
 
     @PostMapping
-    public ResponseEntity<Resource> createResource(@RequestHeader(name = "Authorization") String auth,
+    public ResponseEntity<Resource> createResource(HttpServletRequest request,
                                                    @RequestParam(required = false) MultipartFile file, @RequestParam String name,
                                                    @RequestParam String parentId,
                                                    @RequestParam String contentType) {
-        User user = userRepo.findByToken(auth).orElse(null);
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -134,8 +135,8 @@ public class ResourceService {
     }
 
     @GetMapping("/download/{id}")
-    public ResponseEntity<org.springframework.core.io.Resource> downloadResource(@PathVariable String id, @RequestHeader(name = "Authorization") String auth) {
-        User user = userRepo.findByToken(auth).orElse(null);
+    public ResponseEntity<org.springframework.core.io.Resource> downloadResource(HttpServletRequest request, @PathVariable String id) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -163,8 +164,8 @@ public class ResourceService {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteResource(@PathVariable String id, @RequestHeader(name = "Authorization") String auth) {
-        User user = userRepo.findByToken(auth).orElse(null);
+    public ResponseEntity<?> deleteResource(HttpServletRequest request, @PathVariable String id) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -182,8 +183,8 @@ public class ResourceService {
     }
 
     @GetMapping("/{id}/path")
-    public ResponseEntity<String> getResourcePath(@PathVariable String id, @RequestHeader(name = "Authorization") String auth) {
-        User user = userRepo.findByToken(auth).orElse(null);
+    public ResponseEntity<String> getResourcePath(HttpServletRequest request, @PathVariable String id) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -201,8 +202,8 @@ public class ResourceService {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Resource> updateResourceName(@PathVariable String id, @RequestParam(required = false) String name, @RequestParam(required = false) String description, @RequestHeader(name = "Authorization") String auth) {
-        User user = userRepo.findByToken(auth).orElse(null);
+    public ResponseEntity<Resource> updateResourceName(HttpServletRequest request, @PathVariable String id, @RequestParam(required = false) String name, @RequestParam(required = false) String description) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -230,8 +231,8 @@ public class ResourceService {
     }
 
     @PatchMapping("/{id}/path")
-    public ResponseEntity<Resource> changeResourcePath(@PathVariable String id, @RequestParam String newParentId, @RequestHeader(name = "Authorization") String auth) {
-        User user = userRepo.findByToken(auth).orElse(null);
+    public ResponseEntity<Resource> changeResourcePath(HttpServletRequest request, @PathVariable String id, @RequestParam String newParentId) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

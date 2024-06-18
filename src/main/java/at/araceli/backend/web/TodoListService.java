@@ -7,6 +7,7 @@ import at.araceli.backend.pojos.Item;
 import at.araceli.backend.pojos.TodoList;
 import at.araceli.backend.pojos.User;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -38,36 +39,51 @@ public class TodoListService {
     private final UserRepository userRepo;
 
     @GetMapping
-    public ResponseEntity<Iterable<TodoList>> getAllTodoListsByUser(@RequestParam Long userId) {
-        return ResponseEntity.ok(todoListRepo.findByUserId(userId));
+    public ResponseEntity<Iterable<TodoList>> getAllTodoListsByUser(HttpServletRequest request) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(todoListRepo.findByUserId(user.getUserId()));
     }
 
     @GetMapping("/{todoListId}/item")
-    public ResponseEntity<Iterable<Item>> getTodoListItemsByTodoListId(@PathVariable Long todoListId) {
-        return ResponseEntity.ok(todoListRepo.findItemsByTodoListId(todoListId));
+    public ResponseEntity<Iterable<Item>> getTodoListItemsByTodoListId(HttpServletRequest request, @PathVariable Long todoListId) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        TodoList todoList = todoListRepo.findById(todoListId).orElse(null);
+        if (todoList == null || !todoList.getCreator().equals(user)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(todoList.getItems());
     }
 
     @PostMapping
-    public ResponseEntity<TodoList> createTodoList(@RequestParam Long userId, @RequestBody TodoList todoList) {
-        Optional<User> optionalUser = userRepo.findById(userId);
-
-        if (optionalUser.isPresent()) {
-            User user = optionalUser.get();
-            user.getTodoLists().add(todoList);
-            todoList.setCreator(user);
-            todoListRepo.save(todoList);
-            return ResponseEntity.status(HttpStatus.CREATED).body(todoList);
+    public ResponseEntity<TodoList> createTodoList(HttpServletRequest request, @RequestBody TodoList todoList) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        return ResponseEntity.notFound().build();
+        user.getTodoLists().add(todoList);
+        todoList.setCreator(user);
+        todoListRepo.save(todoList);
+        return ResponseEntity.status(HttpStatus.CREATED).body(todoList);
     }
 
     @PostMapping("/{todoListId}/addItem")
-    public ResponseEntity<Iterable<Item>> addItemToTodoList(@PathVariable Long todoListId, @RequestBody Item item) {
-        Optional<TodoList> optionalTodoList = todoListRepo.findById(todoListId);
+    public ResponseEntity<Iterable<Item>> addItemToTodoList(HttpServletRequest request, @PathVariable Long todoListId, @RequestBody Item item) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        if (optionalTodoList.isPresent()) {
-            TodoList todoList = optionalTodoList.get();
+        TodoList todoList = todoListRepo.findById(todoListId).orElse(null);
+
+        if (todoList != null && todoList.getCreator().equals(user)) {
             todoList.addToDoList(item);
             todoListRepo.save(todoList);
             return ResponseEntity.ok(todoList.getItems());
@@ -77,65 +93,94 @@ public class TodoListService {
     }
 
     @DeleteMapping("/{todoListId}")
-    public ResponseEntity<String> deleteTodoList(@PathVariable Long todoListId) {
-        todoListRepo.deleteById(todoListId);
+    public ResponseEntity<String> deleteTodoList(HttpServletRequest request, @PathVariable Long todoListId) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        TodoList todoList = todoListRepo.findById(todoListId).orElse(null);
+        if (todoList != null && todoList.getCreator().equals(user)) {
+            todoListRepo.deleteById(todoListId);
+        }
+
         return ResponseEntity.accepted().body("" + todoListId);
     }
 
     @DeleteMapping("/item/{itemId}")
-    public ResponseEntity<String> deleteItemFromTodoList(@PathVariable String itemId) {
+    public ResponseEntity<String> deleteItemFromTodoList(HttpServletRequest request, @PathVariable String itemId) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Item item = itemRepo.findById(itemId).orElse(null);
+        if (item == null || !item.getTodoList().getCreator().equals(user)) {
+            return ResponseEntity.notFound().build();
+        }
         itemRepo.deleteById(itemId);
         return ResponseEntity.accepted().body(itemId);
     }
 
     @PatchMapping("/{todoListId}")
-    public ResponseEntity<TodoList> updateTodoList(@PathVariable Long todoListId, @RequestBody TodoList todoListChanges) {
-        Optional<TodoList> optionalTodoList = todoListRepo.findById(todoListId);
+    public ResponseEntity<TodoList> updateTodoList(HttpServletRequest request, @PathVariable Long todoListId, @RequestBody TodoList todoListChanges) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        if (optionalTodoList.isPresent()) {
-            TodoList todoListInDB = optionalTodoList.get();
-            Field[] fields = todoListInDB.getClass().getDeclaredFields();
+        TodoList todoList = todoListRepo.findById(todoListId).orElse(null);
+
+        if (todoList != null && todoList.getCreator().equals(user)) {
+            Field[] fields = todoList.getClass().getDeclaredFields();
             for (Field field : fields) {
                 field.setAccessible(true);
                 Object value = ReflectionUtils.getField(field, todoListChanges);
                 if (value != null) {
-                    ReflectionUtils.setField(field, todoListInDB, value);
+                    ReflectionUtils.setField(field, todoList, value);
                 }
             }
-            todoListRepo.save(todoListInDB);
-            return ResponseEntity.accepted().body(todoListInDB);
+            todoListRepo.save(todoList);
+            return ResponseEntity.accepted().body(todoList);
         }
 
         return ResponseEntity.notFound().build();
     }
 
     @PatchMapping("/item/{itemId}")
-    public ResponseEntity<Item> updateItem(@PathVariable String itemId, @RequestBody Item itemUpdates) {
-        Optional<Item> optionalItem = itemRepo.findById(itemId);
+    public ResponseEntity<Item> updateItem(HttpServletRequest request, @PathVariable String itemId, @RequestBody Item itemUpdates) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        if (optionalItem.isPresent()) {
-            Item itemInDB = optionalItem.get();
-            Field[] fields = itemInDB.getClass().getDeclaredFields();
+        Item item = itemRepo.findById(itemId).orElse(null);
+
+        if (item != null && item.getTodoList().getCreator().equals(user)) {
+            Field[] fields = item.getClass().getDeclaredFields();
             for (Field field : fields) {
                 field.setAccessible(true);
                 Object value = ReflectionUtils.getField(field, itemUpdates);
                 if (value != null) {
-                    ReflectionUtils.setField(field, itemInDB, value);
+                    ReflectionUtils.setField(field, item, value);
                 }
             }
-            itemRepo.save(itemInDB);
-            return ResponseEntity.accepted().body(itemInDB);
+            itemRepo.save(item);
+            return ResponseEntity.accepted().body(item);
         }
 
         return ResponseEntity.notFound().build();
     }
 
     @PatchMapping("/item/{itemId}/toggleDone")
-    public ResponseEntity<Item> setDoneItem(@PathVariable String itemId) {
-        Optional<Item> optionalItem = itemRepo.findById(itemId);
+    public ResponseEntity<Item> setDoneItem(HttpServletRequest request, @PathVariable String itemId) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        if (optionalItem.isPresent()) {
-            Item item = optionalItem.get();
+        Item item = itemRepo.findById(itemId).orElse(null);
+
+        if (item != null && item.getTodoList().getCreator().equals(user)) {
             item.setIsDone(!item.getIsDone());
             itemRepo.save(item);
             return ResponseEntity.accepted().body(item);
