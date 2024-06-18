@@ -41,18 +41,6 @@ public class ResourceService {
     private final ResourceRepository resourceRepo;
     private final SharedResourceRepository sharedResourceRepo;
 
-    // TODO: remove after tests
-    @PostConstruct
-    public void test() {
-        User user = new User();
-        user.setUsername("test");
-        user.setToken("TOKEN");
-        user.setTokenExpiresAt(LocalDateTime.now().plusHours(1));
-        userRepo.save(user);
-        // TODO: add this line to register function, must be executed for every new user
-        IOAccess.createFolderStructureForNewUser(user);
-    }
-
     @GetMapping
     public ResponseEntity<Iterable<Resource>> getOwnResources(HttpServletRequest request, @RequestParam(required = false) String search, @RequestParam(required = false) String fileExtension) {
         User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);

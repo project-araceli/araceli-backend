@@ -3,6 +3,7 @@ package at.araceli.backend.pojos;
 import at.araceli.backend.pojos.enums.ResourceType;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -49,6 +50,7 @@ public class Resource {
     private List<Resource> children;
 
     @OneToMany(mappedBy = "resource")
+    @JsonIgnore
     private List<SharedResource> sharedResources = new ArrayList<>();
 
     @ToString.Exclude
