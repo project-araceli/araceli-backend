@@ -36,6 +36,13 @@ public class AuthenticationService {
     private final JWTService jwtService;
     private final AuthenticationManager authenticationManager;
 
+    /**
+     * Check if user is a valid Google User and extract User data
+     * @param request
+     * @return Optional<User>
+     * @throws GeneralSecurityException
+     * @throws IOException
+     */
     private Optional<User> googleAuthenticate(GoogleAuthenticationRequest request) throws GeneralSecurityException, IOException {
         NetHttpTransport transport = new NetHttpTransport();
         JsonFactory factory = new GsonFactory();
@@ -66,6 +73,13 @@ public class AuthenticationService {
         return Optional.empty();
     }
 
+    /**
+     * Logs in a User if already existing and creates new one if not.
+     * @param request
+     * @return AuthenticationResponse
+     * @throws GeneralSecurityException
+     * @throws IOException
+     */
     public AuthenticationResponse authenticateWithGoogle(GoogleAuthenticationRequest request) throws GeneralSecurityException, IOException {
 
         Optional<User> optionalUser = googleAuthenticate(request);
@@ -88,6 +102,11 @@ public class AuthenticationService {
         return null;
     }
 
+    /**
+     * Creates a User and their folder Structure.
+     * @param request
+     * @return AuthenticationResponse.
+     */
     public AuthenticationResponse register(RegisterRequest request) {
         User user = new User();
         user.setUsername(request.getUsername());
@@ -104,6 +123,11 @@ public class AuthenticationService {
 
     }
 
+    /**
+     * Verifies whether User is valid.
+     * @param request
+     * @return AuthenticationResponse
+     */
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())

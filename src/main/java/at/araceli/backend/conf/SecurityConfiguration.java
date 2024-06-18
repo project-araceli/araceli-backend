@@ -40,6 +40,12 @@ public class SecurityConfiguration {
     private final JwtAuthFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
 
+    /**
+     * Applies desired security filters, to ensure that users are athenticated before accessing certain routes
+     * @param http
+     * @return SecurityFilterChain
+     * @throws Exception
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http

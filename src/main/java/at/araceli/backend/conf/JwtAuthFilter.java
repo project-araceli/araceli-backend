@@ -30,6 +30,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JWTService jwtService;
     private final UserDetailsService userDetailsService;
 
+    /**
+     * Checks whether JWT Token exists and validates it.
+     * @param request
+     * @param response
+     * @param filterChain
+     * @throws ServletException
+     * @throws IOException
+     */
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
