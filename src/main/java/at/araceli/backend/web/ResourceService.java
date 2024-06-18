@@ -164,7 +164,7 @@ public class ResourceService {
                     File file = IOAccess.getFileByResource(optionalResource.get());
                     fileLength = file.length();
                 } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    return ResponseEntity.badRequest().build();
                 }
             }
 
