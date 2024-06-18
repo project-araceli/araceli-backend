@@ -1,10 +1,12 @@
 package at.araceli.backend.pojos;
 
 import at.araceli.backend.pojos.enums.Permission;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 /**
  * Project: araceli-backend
@@ -21,12 +23,12 @@ public class SharedResource {
     @EmbeddedId
     private SharedResourceId id;
 
-    @ManyToOne
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @MapsId("resourceId")
     @JoinColumn(name = "resource_id")
     private Resource resource;
 
-    @ManyToOne
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @MapsId("userId")
     @JoinColumn(name = "user_id")
     private User user;

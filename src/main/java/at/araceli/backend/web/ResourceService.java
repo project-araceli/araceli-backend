@@ -1,9 +1,11 @@
 package at.araceli.backend.web;
 
 import at.araceli.backend.db.ResourceRepository;
+import at.araceli.backend.db.SharedResourceRepository;
 import at.araceli.backend.db.UserRepository;
 import at.araceli.backend.io.IOAccess;
 import at.araceli.backend.pojos.*;
+import at.araceli.backend.pojos.enums.Permission;
 import at.araceli.backend.pojos.enums.ResourceType;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,6 +39,7 @@ public class ResourceService {
 
     private final UserRepository userRepo;
     private final ResourceRepository resourceRepo;
+    private final SharedResourceRepository sharedResourceRepo;
 
     // TODO: remove after tests
     @PostConstruct
@@ -72,8 +75,8 @@ public class ResourceService {
     }
 
     @GetMapping("/shared")
-    public ResponseEntity<Iterable<Resource>> getSharedResourcesByUserId(@RequestParam Long userId) {
-        User user = userRepo.findById(userId).orElse(null);
+    public ResponseEntity<Iterable<Resource>> getSharedResourcesByUserId(HttpServletRequest request) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
 
         if (user != null) {
             return ResponseEntity.ok(user.getSharedResources().stream().map(SharedResource::getResource).toList());
@@ -132,6 +135,28 @@ public class ResourceService {
         userRepo.save(user);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(resource);
+    }
+
+    @PatchMapping("/share/{username}")
+    public ResponseEntity<Resource> shareResource(HttpServletRequest request, @PathVariable String username, @RequestParam String id) {
+        User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Optional<Resource> optionalResource = user.getResources().stream().filter(x -> x.getResourceId().equals(id)).findFirst();
+        if (optionalResource.isPresent()) {
+            User userForSharing = userRepo.findByUsername(username).orElse(null);
+            if (userForSharing == null) {
+                return ResponseEntity.notFound().build();
+            }
+            SharedResource sharedResource = new SharedResource(new SharedResourceId(id, userForSharing.getUserId()), optionalResource.get(), userForSharing, Permission.READ);
+            userForSharing.getSharedResources().add(sharedResource);
+            userRepo.save(userForSharing);
+            return ResponseEntity.ok().build();
+        }
+
+        return ResponseEntity.notFound().build();
     }
 
     @GetMapping("/download/{id}")

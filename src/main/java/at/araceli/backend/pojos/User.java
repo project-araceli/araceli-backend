@@ -46,7 +46,7 @@ public class User implements UserDetails {
     @JsonIgnore
     private LocalDateTime tokenExpiresAt;
     private String imageUrl;
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     private Role role;
 
     @JsonIgnore
@@ -55,7 +55,7 @@ public class User implements UserDetails {
     private List<Resource> resources = new ArrayList<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<SharedResource> sharedResources = new ArrayList<>();
 
     @JsonIgnore
