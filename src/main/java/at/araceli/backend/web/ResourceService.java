@@ -45,22 +45,26 @@ public class ResourceService {
         user.setToken("TOKEN");
         user.setTokenExpiresAt(LocalDateTime.now().plusHours(1));
         userRepo.save(user);
+        // TODO: add this line to register function, must be executed for every new user
         IOAccess.createFolderStructureForNewUser(user);
-        // userRepo.save(new User(null, "test", "test@test.com", "", "", null, null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
     }
 
     @GetMapping
-    public ResponseEntity<Iterable<Resource>> getOwnResources(@RequestHeader(name = "Authorization") String auth) {
+    public ResponseEntity<Iterable<Resource>> getOwnResources(@RequestHeader(name = "Authorization") String auth, @RequestParam(required = false) String search, @RequestParam(required = false) String fileExtension) {
         User user = userRepo.findByToken(auth).orElse(null);
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-
         List<Resource> resourceList = resourceRepo.findAllRootElementsByUserId(user.getUserId());
 
-        if (resourceList.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        if (search != null && !search.isBlank() && fileExtension != null && !fileExtension.isBlank()) {
+            resourceList.retainAll(resourceRepo.findAllByUserIdAndLikeName(user.getUserId(), search));
+            resourceList.retainAll(resourceRepo.findAllByUserAndFileExtension(user.getUserId(), fileExtension.toUpperCase()));
+        } else if (search != null && !search.isBlank()) {
+            resourceList = resourceRepo.findAllByUserIdAndLikeName(user.getUserId(), search);
+        } else if (fileExtension != null && !fileExtension.isBlank()) {
+            resourceList = resourceRepo.findAllByUserAndFileExtension(user.getUserId(), fileExtension.toUpperCase());
         }
 
         return ResponseEntity.ok(resourceList);
@@ -112,12 +116,12 @@ public class ResourceService {
         user.getResources().add(resource);
 
         if (contentType.equals("FOLDER")) {
-            boolean didWriteToFS = IOAccess.writeFolderToFileSystem(resource, resourceRepo);
+            boolean didWriteToFS = IOAccess.writeFolderToFileSystem(resource);
             if (!didWriteToFS) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
             }
         } else {
-            boolean didWriteToFS = IOAccess.writeFileToFileSystem(resource, file, resourceRepo);
+            boolean didWriteToFS = IOAccess.writeFileToFileSystem(resource, file);
             if (!didWriteToFS) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
             }
@@ -138,12 +142,12 @@ public class ResourceService {
 
         Optional<Resource> optionalResource = user.getResources().stream().filter(x -> x.getResourceId().equals(id)).findFirst();
         if (optionalResource.isPresent()) {
-            ByteArrayResource byteArrayResource = IOAccess.readFileFromFileSystem(optionalResource.get(), resourceRepo);
+            ByteArrayResource byteArrayResource = IOAccess.readFileFromFileSystem(optionalResource.get());
             Long fileLength = 0L;
 
             if (byteArrayResource != null) {
                 try {
-                    File file = IOAccess.getFileByResource(optionalResource.get(), resourceRepo);
+                    File file = IOAccess.getFileByResource(optionalResource.get());
                     fileLength = file.length();
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -170,11 +174,124 @@ public class ResourceService {
             return ResponseEntity.notFound().build();
         }
 
-        IOAccess.deleteFileByResource(resource, resourceRepo);
+        IOAccess.deleteFileByResource(resource);
 
         resourceRepo.delete(resource);
 
         return ResponseEntity.accepted().build();
+    }
+
+    @GetMapping("/{id}/path")
+    public ResponseEntity<String> getResourcePath(@PathVariable String id, @RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Resource resource = resourceRepo.findById(id).orElse(null);
+        if (resource == null || !resource.getCreator().getUserId().equals(user.getUserId())) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        String path = "/" + IOAccess.getRelativeFilePathByResource(resource);
+        if (!File.separator.equals("/")) {
+            path = path.replaceAll("\\\\", "/");
+        }
+        return ResponseEntity.ok(path);
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Resource> updateResourceName(@PathVariable String id, @RequestParam(required = false) String name, @RequestParam(required = false) String description, @RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Resource resource = resourceRepo.findById(id).orElse(null);
+        if (resource == null || !resource.getCreator().getUserId().equals(user.getUserId())) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (name != null) {
+            boolean isSuccessful = IOAccess.renameFile(resource, name);
+            if (!isSuccessful) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            }
+
+            resource.setName(name);
+        }
+        if (description != null) {
+            resource.setDescription(description);
+        }
+
+        resourceRepo.save(resource);
+
+        return ResponseEntity.ok().body(resource);
+    }
+
+    @PatchMapping("/{id}/path")
+    public ResponseEntity<Resource> changeResourcePath(@PathVariable String id, @RequestParam String newParentId, @RequestHeader(name = "Authorization") String auth) {
+        User user = userRepo.findByToken(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Resource resource = resourceRepo.findById(id).orElse(null);
+        if (resource == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource oldParentResource = resource.getParent();
+        Resource newParentResource = resourceRepo.findById(newParentId).orElse(null);
+
+        if (!newParentId.equals("root") && newParentResource == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (!resource.getCreator().getUserId().equals(user.getUserId()) || (newParentResource != null && !newParentResource.getCreator().getUserId().equals(user.getUserId()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        // moving the file to the same location does not make sense
+        if (oldParentResource == newParentResource) {
+            return ResponseEntity.status(HttpStatus.I_AM_A_TEAPOT).build();
+        }
+
+        boolean isSuccessful = IOAccess.moveFile(resource, newParentResource);
+        if (!isSuccessful) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
+        if (oldParentResource == null) {
+            user.getResources().remove(resource);
+            log.info(user.toString());
+        } else {
+            oldParentResource.getChildren().remove(resource);
+            log.info("oldParentResource#1: {}", oldParentResource);
+        }
+
+        resource.setParent(newParentResource);
+        log.info("newParentResource#1: {}", newParentResource);
+
+        if (newParentResource == null) {
+            user.getResources().add(resource);
+            log.info(user.toString());
+        } else {
+            newParentResource.getChildren().add(resource);
+            log.info("newParentResource#2: {}", newParentResource);
+        }
+
+        if (oldParentResource != null) {
+            log.info("OLD SAVED LOL");
+            resourceRepo.save(oldParentResource);
+        }
+        if (newParentResource == null || oldParentResource == null) {
+            log.info("USER SAVED LOL");
+            userRepo.save(user);
+        }
+        if (newParentResource != null) {
+            log.info("NEW SAVED LOL");
+            resourceRepo.save(newParentResource);
+        }
+
+        return ResponseEntity.accepted().body(resource);
     }
 
 }
