@@ -39,7 +39,6 @@ public class ResourceService {
 
     private final UserRepository userRepo;
     private final ResourceRepository resourceRepo;
-    private final SharedResourceRepository sharedResourceRepo;
 
     @GetMapping
     public ResponseEntity<Iterable<Resource>> getOwnResources(HttpServletRequest request, @RequestParam(required = false) String search, @RequestParam(required = false) String fileExtension) {
@@ -275,33 +274,25 @@ public class ResourceService {
 
         if (oldParentResource == null) {
             user.getResources().remove(resource);
-            log.info(user.toString());
         } else {
             oldParentResource.getChildren().remove(resource);
-            log.info("oldParentResource#1: {}", oldParentResource);
         }
 
         resource.setParent(newParentResource);
-        log.info("newParentResource#1: {}", newParentResource);
 
         if (newParentResource == null) {
             user.getResources().add(resource);
-            log.info(user.toString());
         } else {
             newParentResource.getChildren().add(resource);
-            log.info("newParentResource#2: {}", newParentResource);
         }
 
         if (oldParentResource != null) {
-            log.info("OLD SAVED LOL");
             resourceRepo.save(oldParentResource);
         }
         if (newParentResource == null || oldParentResource == null) {
-            log.info("USER SAVED LOL");
             userRepo.save(user);
         }
         if (newParentResource != null) {
-            log.info("NEW SAVED LOL");
             resourceRepo.save(newParentResource);
         }
 
