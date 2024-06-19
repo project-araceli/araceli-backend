@@ -290,6 +290,9 @@ public class ResourceService {
             newParentResource.getChildren().add(resource);
         }
 
+        // I don't know what happens here, but these two log statements make this function work correctly when you try to set the parent to null
+        log.info(resource.toString());
+        log.info(user.getResources().toString());
         if (oldParentResource != null) {
             resourceRepo.save(oldParentResource);
         }
