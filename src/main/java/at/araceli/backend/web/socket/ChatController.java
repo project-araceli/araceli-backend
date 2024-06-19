@@ -4,7 +4,9 @@ import at.araceli.backend.db.UserRepository;
 import at.araceli.backend.pojos.IncomingMessage;
 import at.araceli.backend.pojos.Message;
 import at.araceli.backend.pojos.User;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
@@ -22,6 +24,7 @@ import java.util.UUID;
 
 @Controller
 @RequiredArgsConstructor
+@Slf4j
 public class ChatController {
 
     private final UserRepository userRepo;
@@ -29,7 +32,7 @@ public class ChatController {
     @MessageMapping("/chat")
     @SendTo("/topic/messages")
     public Message sendChat(IncomingMessage message) {
-        User user = userRepo.findByToken(message.getToken()).orElse(null);
+        User user = new User();
         return new Message(UUID.randomUUID().toString(), user, message.getContent(), LocalDateTime.now());
     }
 }

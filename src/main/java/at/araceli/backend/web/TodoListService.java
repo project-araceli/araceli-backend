@@ -174,14 +174,18 @@ public class TodoListService {
     @PatchMapping("/item/{itemId}/toggleDone")
     public ResponseEntity<Item> setDoneItem(HttpServletRequest request, @PathVariable String itemId) {
         User user = userRepo.findByUsername(request.getUserPrincipal().getName()).orElse(null);
+        log.info("HEREEEEE");
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         Item item = itemRepo.findById(itemId).orElse(null);
+        log.info("{}", item == null);
 
         if (item != null && item.getTodoList().getCreator().equals(user)) {
             item.setIsDone(!item.getIsDone());
+            log.info(item.toString());
+            log.info("HEREE");
             itemRepo.save(item);
             return ResponseEntity.accepted().body(item);
         }
