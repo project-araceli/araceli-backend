@@ -189,6 +189,10 @@ public class ResourceService {
 
         IOAccess.deleteFileByResource(resource);
 
+        resource.setParent(null);
+        resource.setCreator(null);
+        resourceRepo.save(resource);
+        resourceRepo.deleteById(id);
         resourceRepo.delete(resource);
 
         return ResponseEntity.accepted().build();
