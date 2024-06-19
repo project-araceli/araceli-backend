@@ -32,7 +32,9 @@ public class ChatController {
     @MessageMapping("/chat")
     @SendTo("/topic/messages")
     public Message sendChat(IncomingMessage message) {
-        User user = new User();
+        User anonymous = new User();
+        anonymous.setUsername("anonymous");
+        User user = userRepo.findByUsername(message.getUsername()).orElse(anonymous);
         return new Message(UUID.randomUUID().toString(), user, message.getContent(), LocalDateTime.now());
     }
 }

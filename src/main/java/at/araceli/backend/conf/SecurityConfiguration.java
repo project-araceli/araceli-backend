@@ -52,7 +52,7 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
 //                .cors(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers("/auth/**")
+                        .requestMatchers("/auth/**", "/chat", "/chat/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated()

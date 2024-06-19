@@ -12,5 +12,5 @@ import lombok.Data;
 @Data
 public class IncomingMessage {
     private String content;
-    private String token;
+    private String username;
 }
